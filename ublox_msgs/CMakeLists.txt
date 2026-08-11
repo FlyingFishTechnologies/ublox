@@ -3,7 +3,6 @@ project(ublox_msgs)
 
 find_package(catkin REQUIRED COMPONENTS message_generation ublox_serialization std_msgs sensor_msgs)
 
-# DIRECTORY msg is globbed at configure time (includes NavPL.msg and others)
 add_message_files(DIRECTORY msg)
 generate_messages(DEPENDENCIES std_msgs sensor_msgs)
 
