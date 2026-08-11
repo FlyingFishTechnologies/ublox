@@ -1047,10 +1047,16 @@ class UbloxFirmware8 : public UbloxFirmware7Plus<ublox_msgs::NavPVT> {
 
 /**
  *  @brief Implements functions for firmware version 9.
- *  For now it simply re-uses the firmware version 8 class
- *  but allows for future expansion of functionality
+ *  Extends firmware version 8 with NAV-PL (protection level) support.
  */
 class UbloxFirmware9 : public UbloxFirmware8 {
+ public:
+  /**
+   * @brief Subscribe to Firmware 9 messages.
+   *
+   * @details Subscribes to NavPL in addition to Firmware 8 messages.
+   */
+  void subscribe();
 };
 
 /**

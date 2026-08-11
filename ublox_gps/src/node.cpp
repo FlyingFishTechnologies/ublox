@@ -1260,6 +1260,16 @@ void UbloxFirmware8::subscribe() {
         publish<ublox_msgs::RxmRTCM>, _1, "rxmrtcm"), kSubscribeRate);
 }
 
+void UbloxFirmware9::subscribe() {
+  UbloxFirmware8::subscribe();
+
+  // Subscribe to NAV-PL (protection level) messages
+  nh->param("publish/nav/pl", enabled["nav_pl"], enabled["nav"]);
+  if (enabled["nav_pl"])
+    gps.subscribe<ublox_msgs::NavPL>(boost::bind(
+        publish<ublox_msgs::NavPL>, _1, "navpl"), kSubscribeRate);
+}
+
 //
 // Raw Data Products
 //
