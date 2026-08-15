@@ -761,10 +761,7 @@ void UbloxFirmware6::callbackNavPosLlh(const ublox_msgs::NavPOSLLH& m) {
   // Position message
   static ros::Publisher fixPublisher =
       nh->advertise<sensor_msgs::NavSatFix>("fix", kROSQueueSize);
-  if (m.iTOW == last_nav_vel_.iTOW)
-    fix_.header.stamp = velocity_.header.stamp; // use last timestamp
-  else
-    fix_.header.stamp = ros::Time::now(); // new timestamp
+  fix_.header.stamp = ros::Time::now();
 
   fix_.header.frame_id = frame_id;
   fix_.latitude = m.lat * 1e-7;
@@ -805,10 +802,7 @@ void UbloxFirmware6::callbackNavVelNed(const ublox_msgs::NavVELNED& m) {
   static ros::Publisher velocityPublisher =
       nh->advertise<geometry_msgs::TwistWithCovarianceStamped>("fix_velocity",
                                                                 kROSQueueSize);
-  if (m.iTOW == last_nav_pos_.iTOW)
-    velocity_.header.stamp = fix_.header.stamp; // same time as last navposllh
-  else
-    velocity_.header.stamp = ros::Time::now(); // create a new timestamp
+  velocity_.header.stamp = ros::Time::now();
   velocity_.header.frame_id = frame_id;
 
   //  convert to XYZ linear velocity
@@ -1715,7 +1709,9 @@ void HpgRovProduct::callbackNavRelPosNed(const ublox_msgs::NavRELPOSNED &m) {
   if (enabled["nav_relposned"]) {
     static ros::Publisher publisher =
         nh->advertise<ublox_msgs::NavRELPOSNED>("navrelposned", kROSQueueSize);
-    publisher.publish(m);
+    ublox_msgs::NavRELPOSNED msg = m;
+    setRosHeader(msg);
+    publisher.publish(msg);
   }
 
   last_rel_pos_ = m;
@@ -1757,7 +1753,9 @@ void HpPosRecProduct::callbackNavHpPosLlh(const ublox_msgs::NavHPPOSLLH& m) {
   if (enabled["nav_hpposllh"]) {
     static ros::Publisher publisher =
         nh->advertise<ublox_msgs::NavHPPOSLLH>("navhpposllh", kROSQueueSize);
-    publisher.publish(m);
+    ublox_msgs::NavHPPOSLLH msg = m;
+    setRosHeader(msg);
+    publisher.publish(msg);
   }
 
   if (enabled["nav_hpfix"]) {
@@ -1796,7 +1794,9 @@ void HpPosRecProduct::callbackNavRelPosNed(const ublox_msgs::NavRELPOSNED9 &m) {
   if (enabled["nav_relposned"]) {
     static ros::Publisher publisher =
         nh->advertise<ublox_msgs::NavRELPOSNED9>("navrelposned", kROSQueueSize);
-    publisher.publish(m);
+    ublox_msgs::NavRELPOSNED9 msg = m;
+    setRosHeader(msg);
+    publisher.publish(msg);
   }
 
   if (enabled["nav_heading"]) {

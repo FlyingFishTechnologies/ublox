@@ -32,28 +32,95 @@
 #include "serialization.h"
 #include "checksum.h"
 
+#include <algorithm>
+#include <vector>
+
+#include <ros/message_traits.h>
 #include <ros/serialization.h>
 
 namespace ublox {
 
+namespace detail {
+
+//! Serialized size of an empty std_msgs/Header (seq, stamp, empty frame_id).
+static const uint32_t kEmptyHeaderLength = 16;
+
 template <typename T>
-void Serializer<T>::read(const uint8_t *data, uint32_t count, 
-                         typename boost::call_traits<T>::reference message) {
+void read(const uint8_t *data, uint32_t count,
+          typename boost::call_traits<T>::reference message,
+          const ros::message_traits::FalseType&) {
   ros::serialization::IStream stream(const_cast<uint8_t *>(data), count);
   ros::serialization::Serializer<T>::read(stream, message);
 }
 
 template <typename T>
+void read(const uint8_t *data, uint32_t count,
+          typename boost::call_traits<T>::reference message,
+          const ros::message_traits::TrueType&) {
+  // ROS messages put Header first; u-blox payloads do not include it.
+  std::vector<uint8_t> buf(kEmptyHeaderLength + count, 0);
+  std::copy(data, data + count, buf.begin() + kEmptyHeaderLength);
+  ros::serialization::IStream stream(&buf[0], buf.size());
+  ros::serialization::Serializer<T>::read(stream, message);
+}
+
+template <typename T>
+uint32_t serializedLength(typename boost::call_traits<T>::param_type message,
+                          const ros::message_traits::FalseType&) {
+  return ros::serialization::Serializer<T>::serializedLength(message);
+}
+
+template <typename T>
+uint32_t serializedLength(typename boost::call_traits<T>::param_type message,
+                          const ros::message_traits::TrueType&) {
+  return ros::serialization::Serializer<T>::serializedLength(message) -
+         ros::serialization::serializationLength(message.header);
+}
+
+template <typename T>
+void write(uint8_t *data, uint32_t size,
+           typename boost::call_traits<T>::param_type message,
+           const ros::message_traits::FalseType&) {
+  ros::serialization::OStream stream(data, size);
+  ros::serialization::Serializer<T>::write(stream, message);
+}
+
+template <typename T>
+void write(uint8_t *data, uint32_t size,
+           typename boost::call_traits<T>::param_type message,
+           const ros::message_traits::TrueType&) {
+  const uint32_t header_len =
+      ros::serialization::serializationLength(message.header);
+  const uint32_t full_len =
+      ros::serialization::Serializer<T>::serializedLength(message);
+  std::vector<uint8_t> buf(full_len);
+  ros::serialization::OStream stream(&buf[0], full_len);
+  ros::serialization::Serializer<T>::write(stream, message);
+  std::copy(buf.begin() + header_len, buf.end(), data);
+  (void)size;
+}
+
+}  // namespace detail
+
+template <typename T>
+void Serializer<T>::read(const uint8_t *data, uint32_t count, 
+                         typename boost::call_traits<T>::reference message) {
+  detail::read<T>(data, count, message,
+                  typename ros::message_traits::HasHeader<T>::type());
+}
+
+template <typename T>
 uint32_t Serializer<T>::serializedLength(
     typename boost::call_traits<T>::param_type message) {
-  return ros::serialization::Serializer<T>::serializedLength(message);
+  return detail::serializedLength<T>(
+      message, typename ros::message_traits::HasHeader<T>::type());
 }
 
 template <typename T>
 void Serializer<T>::write(uint8_t *data, uint32_t size, 
                           typename boost::call_traits<T>::param_type message) {
-  ros::serialization::OStream stream(data, size);
-  ros::serialization::Serializer<T>::write(stream, message);
+  detail::write<T>(data, size, message,
+                   typename ros::message_traits::HasHeader<T>::type());
 }
 
 } // namespace ublox

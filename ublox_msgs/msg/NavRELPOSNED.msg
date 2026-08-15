@@ -13,6 +13,8 @@
 #    with High Precision GNSS products)
 #
 
+Header header
+
 uint8 CLASS_ID = 1
 uint8 MESSAGE_ID = 60
 

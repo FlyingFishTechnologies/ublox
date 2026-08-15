@@ -8,6 +8,8 @@
 # WARNING: this message is a different length than the MonHW message for
 # firmware version 7 & 8
 
+Header header
+
 uint8 CLASS_ID = 10
 uint8 MESSAGE_ID = 9
 

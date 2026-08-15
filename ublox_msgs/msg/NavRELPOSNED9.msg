@@ -12,6 +12,8 @@
 #  - u-blox 9 from protocol version 27.11 (only with High Precision GNSS products)
 #
 
+Header header
+
 uint8 CLASS_ID = 1
 uint8 MESSAGE_ID = 60
 

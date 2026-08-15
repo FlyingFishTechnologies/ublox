@@ -10,6 +10,8 @@
 # WARNING: For firmware version 7, this message is a different length.
 #
 
+Header header
+
 uint8 CLASS_ID = 1
 uint8 MESSAGE_ID = 7
 

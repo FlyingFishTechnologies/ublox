@@ -6,6 +6,8 @@
 # - u-blox 8 / u-blox M8 from protocol version 20.01 up to version 23.01
 # 
 
+Header header
+
 uint8 CLASS_ID = 2
 uint8 MESSAGE_ID = 50
 

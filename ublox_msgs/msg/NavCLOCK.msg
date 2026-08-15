@@ -2,6 +2,8 @@
 # Clock Solution
 #
 
+Header header
+
 uint8 CLASS_ID = 1
 uint8 MESSAGE_ID = 34
 
