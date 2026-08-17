@@ -34,6 +34,7 @@
 #include <boost/format.hpp>
 #include <boost/function.hpp>
 #include <boost/thread.hpp>
+#include <vector>
 
 namespace ublox_gps {
 
@@ -163,6 +164,15 @@ class CallbackHandlers {
   }
 
   /**
+   * @brief Add a callback handler for RTCM 3 frames on the I/O stream.
+   */
+  void set_rtcm_callback(
+      boost::function<void(const std::vector<uint8_t>&)> callback) {
+    boost::mutex::scoped_lock lock(callback_mutex_);
+    callback_rtcm_ = callback;
+  }
+
+  /**
    * @brief Calls the callback handler for the message in the reader.
    * @param reader a reader containing a u-blox message
    */
@@ -249,15 +259,53 @@ class CallbackHandlers {
       handle(reader);
     }
     handle_nmea(reader);
+    handle_rtcm(reader.getUnusedData());
+
+    // RTCM after the last UBX message stays in the ASIO buffer unless consumed.
+    const uint8_t *leftover = reader.pos();
+    std::size_t leftover_size = reader.end() - reader.pos();
+    std::size_t consumed_rtcm = 0;
+    if (!callback_rtcm_.empty() && leftover_size > 0 && leftover[0] != 0xB5) {
+      handle_rtcm(leftover, leftover_size);
+      consumed_rtcm = leftover_size;
+    }
 
     // delete read bytes from ASIO input buffer
-    std::copy(reader.pos(), reader.end(), data);
-    size -= reader.pos() - data;
+    std::copy(reader.pos() + consumed_rtcm, reader.end(), data);
+    size -= (reader.pos() - data) + consumed_rtcm;
   }
 
  private:
   typedef std::multimap<std::pair<uint8_t, uint8_t>,
                         boost::shared_ptr<CallbackHandler> > Callbacks;
+
+  void handle_rtcm(const std::string& bytes) {
+    if (bytes.empty()) return;
+    handle_rtcm(reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size());
+  }
+
+  void handle_rtcm(const uint8_t* data, std::size_t size) {
+    boost::mutex::scoped_lock lock(callback_mutex_);
+    if (callback_rtcm_.empty()) return;
+
+    rtcm_buf_.insert(rtcm_buf_.end(), data, data + size);
+    std::size_t i = 0;
+    while (i < rtcm_buf_.size()) {
+      if (rtcm_buf_[i] != 0xD3) {
+        ++i;
+        continue;
+      }
+      if (i + 3 > rtcm_buf_.size()) break;
+      uint16_t length = ((rtcm_buf_[i + 1] & 0x03) << 8) | rtcm_buf_[i + 2];
+      std::size_t end = i + 3 + length + 3;
+      if (end > rtcm_buf_.size()) break;
+      callback_rtcm_(std::vector<uint8_t>(rtcm_buf_.begin() + i,
+                                          rtcm_buf_.begin() + end));
+      i = end;
+    }
+    rtcm_buf_.erase(rtcm_buf_.begin(), rtcm_buf_.begin() + i);
+    if (rtcm_buf_.size() > 8192) rtcm_buf_.clear();
+  }
 
   // Call back handlers for u-blox messages
   Callbacks callbacks_;
@@ -265,6 +313,10 @@ class CallbackHandlers {
   
   //! Callback handler for nmea messages
   boost::function<void(const std::string&)> callback_nmea_;
+  //! Callback handler for RTCM 3 frames
+  boost::function<void(const std::vector<uint8_t>&)> callback_rtcm_;
+  //! Incomplete RTCM bytes waiting for the rest of a frame
+  std::vector<uint8_t> rtcm_buf_;
 };
 
 }  // namespace ublox_gps

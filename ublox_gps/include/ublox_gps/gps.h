@@ -351,6 +351,13 @@ class Gps {
   void subscribe_nmea(boost::function<void(const std::string&)> callback) { callbacks_.set_nmea_callback(callback); }
 
   /**
+   * @brief Subscribe to RTCM 3 frames received on the device I/O stream.
+   */
+  void subscribe_rtcm(boost::function<void(const std::vector<uint8_t>&)> callback) {
+    callbacks_.set_rtcm_callback(callback);
+  }
+
+  /**
    * @brief Subscribe to the message with the given ID. This is used for
    * messages which have the same format but different message IDs,
    * e.g. INF messages.

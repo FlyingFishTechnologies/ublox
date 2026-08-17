@@ -293,6 +293,16 @@ void UbloxNode::subscribe() {
   if (enabled["nmea"])
     gps.subscribe_nmea(boost::bind(publish_nmea, _1, "nmea"));
 
+  // Base stations publish RTCM 3 on /rtcm. Rovers subscribe to the same topic
+  // to inject corrections; do not do both on one node (feedback loop).
+  nh->param("publish/rtcm", enabled["rtcm"], false);
+  if (enabled["rtcm"]) {
+    gps.subscribe_rtcm(boost::bind(publish_rtcm, _1));
+  } else {
+    static ros::Subscriber sub_rtcm = nh->subscribe("/rtcm", 10, rtcmCallback);
+    (void)sub_rtcm;
+  }
+
   // INF messages
   nh->param("inf/debug", enabled["inf_debug"], false);
   if (enabled["inf_debug"])
@@ -1722,6 +1732,9 @@ void HpgRovProduct::callbackNavRelPosNed(const ublox_msgs::NavRELPOSNED &m) {
 // U-Blox High Precision Positioning Receiver
 //
 void HpPosRecProduct::subscribe() {
+  // Survey-in / TMODE3 completion (NavSVIN) lives on HpgRefProduct.
+  HpgRefProduct::subscribe();
+
   // Subscribe to Nav High Precision Position ECEF
   nh->param("publish/nav/hpposecef", enabled["nav_hpposecef"], enabled["nav"]);
   if (enabled["nav_hpposecef"])
@@ -1908,14 +1921,9 @@ void TimProduct::initializeRosDiagnostics() {
   updater->force_update();
 }
 
-void rtcmCallback(const rtcm_msgs::Message::ConstPtr &msg) {
-  gps.sendRtcm(msg->message);
-}
-
 int main(int argc, char** argv) {
   ros::init(argc, argv, "ublox_gps");
   nh.reset(new ros::NodeHandle("~"));
-  ros::Subscriber subRtcm = nh->subscribe("/rtcm", 10, rtcmCallback);
   nh->param("debug", ublox_gps::debug, 1);
   if(ublox_gps::debug) {
     if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,

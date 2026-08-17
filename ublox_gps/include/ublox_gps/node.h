@@ -453,6 +453,20 @@ void publish_nmea(const std::string& sentence, const std::string& topic) {
   publisher.publish(m);
 }
 
+void publish_rtcm(const std::vector<uint8_t>& frame) {
+  static ros::Publisher publisher =
+      nh->advertise<rtcm_msgs::Message>("/rtcm", 50);
+  rtcm_msgs::Message m;
+  m.header.stamp = ros::Time::now();
+  m.header.frame_id = frame_id;
+  m.message = frame;
+  publisher.publish(m);
+}
+
+void rtcmCallback(const rtcm_msgs::Message::ConstPtr &msg) {
+  gps.sendRtcm(msg->message);
+}
+
 /**
  * @param gnss The string representing the GNSS. Refer MonVER message protocol.
  * i.e. GPS, GLO, GAL, BDS, QZSS, SBAS, IMES
